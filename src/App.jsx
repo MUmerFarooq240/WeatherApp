@@ -12,20 +12,21 @@ function App() {
   const api_key = "be52f8c4e25748bcb1652724262905";
   const api_url = "http://api.weatherapi.com/v1/forecast.json";
 
-  const fetchData = async (query) => {
-    if (!city.trim()) return;
+  // 🎯 FIX 1: Search query ko flexible banaya taake coordinates aur city name dono handle hon
+  const fetchData = async (searchQuery) => {
+    // Agar na query mili aur na hi input field mein kuch hai, tab return karo
+    if (!searchQuery || !searchQuery.trim()) return;
+
     try {
       const response = await axios.get(
-        `${api_url}?key=${api_key}&q=${query}&days=1`,
+        `${api_url}?key=${api_key}&q=${searchQuery}&days=1`,
       );
-      // 🎯 FIX 1: 'forcast' ko 'forecast' aur 'forcastday' ko 'forecastday' kar diya
       console.log(response.data.forecast.forecastday[0].hour);
       setWeatherData(response.data);
       setError("");
     } catch (err) {
-      // console.log("There is an error or the City is not found.", err);
       setError("There is an error or the City is not found.");
-      setWeatherData(null); // Ghalat city par purana data hatao
+      setWeatherData(null);
     }
   };
 
@@ -33,19 +34,23 @@ function App() {
     if (event.key === "Enter") fetchData(city);
   };
 
+  // 🎯 FIX 2: Geolocation se data fetch karne ke liye function call add ki
   const getCurrentLocation = () => {
+    setError(""); // Click par purana error clear karein
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          const query = `${latitude}, ${longitude}`;
+          const query = `${latitude},${longitude}`;
+
+          // API call trigger kar di coordinates ke sath
+          fetchData(query);
         },
         (error) => {
           setError(error.message);
         },
       );
     } else {
-      // console.log("Geolocation is not supported on this browser");
       setError("Geolocation is not supported on this browser");
     }
   };
@@ -57,7 +62,13 @@ function App() {
         <div className="flex">
           {/* input field and search button */}
           <div className="flex border rounded items-center px-2 py-2 w-full">
-            <FaSearch className="h-5 w-5" />
+            {/* 🎯 BONUS PRACTICE: Is icon ko click-able banaya taake icon daba kar bhi search ho sake */}
+            <button
+              onClick={() => fetchData(city)}
+              className="focus:outline-none cursor-pointer"
+            >
+              <FaSearch className="h-5 w-5 text-gray-500 hover:text-green-500 transition" />
+            </button>
             <input
               value={city}
               onChange={(e) => setCity(e.target.value)}
@@ -70,14 +81,19 @@ function App() {
           {/* current location button */}
           <button
             onClick={getCurrentLocation}
-            className="px-4 py-2 ml-2 rounded text-white bg-green-500 hover:bg-green-600"
+            className="px-4 py-2 ml-2 rounded text-white bg-green-500 hover:bg-green-600 cursor-pointer"
           >
             <FaMapMarkerAlt className="h-5 w-5" />
           </button>
         </div>
 
         {/* display error */}
-        {error && <p className="text-red-500 text-center mt-4">{error}</p>}
+        {error && (
+          <p className="text-red-500 text-center mt-4 text-sm font-medium">
+            {error}
+          </p>
+        )}
+
         {/* weather data display */}
         {weatherData && (
           <div className="mt-4 text-center">
@@ -96,7 +112,6 @@ function App() {
               {weatherData.current.condition.text}
             </p>
             {/* hourly forecast */}
-            {/* 🎯 FIX 2: Yahan bhi spelling professional kar di */}
             <Hourlyforcast
               hourlyData={weatherData.forecast.forecastday[0].hour}
             />
